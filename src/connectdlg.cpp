@@ -1,5 +1,5 @@
 /******************************************************************************\
- * Copyright (c) 2004-2022
+ * Copyright (c) 2004-2024
  *
  * Author(s):
  *  Volker Fischer
@@ -26,7 +26,7 @@
 
 /* Implementation *************************************************************/
 CConnectDlg::CConnectDlg ( CClientSettings* pNSetP, const bool bNewShowCompleteRegList, const bool bNEnableIPv6, QWidget* parent ) :
-//    CBaseDlg ( parent, Qt::Dialog ),
+    CBaseDlg ( parent, Qt::Dialog ),
     pSettings ( pNSetP ),
     strSelectedAddress ( "" ),
     strSelectedServerName ( "" ),
@@ -38,7 +38,7 @@ CConnectDlg::CConnectDlg ( CClientSettings* pNSetP, const bool bNewShowCompleteR
     bShowAllMusicians ( true ),
     bEnableIPv6 ( bNEnableIPv6 )
 {
-//    setupUi ( this );
+    setupUi ( this );
 
     // Add help text to controls -----------------------------------------------
     // directory
@@ -47,28 +47,28 @@ CConnectDlg::CConnectDlg ( CClientSettings* pNSetP, const bool bNewShowCompleteR
                                   "You can add custom directories in Advanced Settings." );
     QString strDirectoryAN = tr ( "Directory combo box" );
 
-//    lblList->setWhatsThis ( strDirectoryWT );
-//    lblList->setAccessibleName ( strDirectoryAN );
-//    cbxDirectoryServer->setWhatsThis ( strDirectoryWT );
-//    cbxDirectoryServer->setAccessibleName ( strDirectoryAN );
+    lblList->setWhatsThis ( strDirectoryWT );
+    lblList->setAccessibleName ( strDirectoryAN );
+    cbxDirectory->setWhatsThis ( strDirectoryWT );
+    cbxDirectory->setAccessibleName ( strDirectoryAN );
 
     // filter
     QString strFilterWT = "<b>" + tr ( "Filter" ) + ":</b> " +
                           tr ( "Filters the server list by the given text. Note that the filter is case insensitive. "
                                "A single # character will filter for those servers with at least one person connected." );
     QString strFilterAN = tr ( "Filter edit box" );
-//    lblFilter->setWhatsThis ( strFilterWT );
-//    edtFilter->setWhatsThis ( strFilterWT );
+    lblFilter->setWhatsThis ( strFilterWT );
+    edtFilter->setWhatsThis ( strFilterWT );
 
-//    lblFilter->setAccessibleName ( strFilterAN );
-//    edtFilter->setAccessibleName ( strFilterAN );
+    lblFilter->setAccessibleName ( strFilterAN );
+    edtFilter->setAccessibleName ( strFilterAN );
 
-//    // show all mucisians
-//    chbExpandAll->setWhatsThis ( "<b>" + tr ( "Show All Musicians" ) + ":</b> " +
-//                                 tr ( "Uncheck to collapse the server list to show just the server details. "
-//                                      "Check to show everyone on the servers." ) );
+    // show all mucisians
+    chbExpandAll->setWhatsThis ( "<b>" + tr ( "Show All Musicians" ) + ":</b> " +
+                                 tr ( "Uncheck to collapse the server list to show just the server details. "
+                                      "Check to show everyone on the servers." ) );
 
-//    chbExpandAll->setAccessibleName ( tr ( "Show all musicians check box" ) );
+    chbExpandAll->setAccessibleName ( tr ( "Show all musicians check box" ) );
 
     // server list view
     lvwServers->setWhatsThis ( "<b>" + tr ( "Server List" ) + ":</b> " +
@@ -96,7 +96,13 @@ CConnectDlg::CConnectDlg ( CClientSettings* pNSetP, const bool bNewShowCompleteR
     cbxServerAddr->setAccessibleName ( tr ( "Server address edit box" ) );
     cbxServerAddr->setAccessibleDescription ( tr ( "Holds the current server address. It also stores old addresses in the combo box list." ) );
 
-    UpdateDirectoryServerComboBox();
+    tbtDeleteServerAddr->setAccessibleName ( tr ( "Delete server address button" ) );
+    tbtDeleteServerAddr->setWhatsThis ( "<b>" + tr ( "Delete Server Address" ) + ":</b> " +
+                                        tr ( "Click the button to clear the currently selected server address "
+                                             "and delete it from the list of stored servers." ) );
+    tbtDeleteServerAddr->setText ( u8"\u232B" );
+
+    UpdateDirectoryComboBox();
 
     // init server address combo box (max MAX_NUM_SERVER_ADDR_ITEMS entries)
     cbxServerAddr->setMaxCount ( MAX_NUM_SERVER_ADDR_ITEMS );
@@ -169,10 +175,7 @@ CConnectDlg::CConnectDlg ( CClientSettings* pNSetP, const bool bNewShowCompleteR
     // combo boxes
     QObject::connect ( cbxServerAddr, &QComboBox::editTextChanged, this, &CConnectDlg::OnServerAddrEditTextChanged );
 
-    QObject::connect ( cbxDirectoryServer,
-                       static_cast<void ( QComboBox::* ) ( int )> ( &QComboBox::activated ),
-                       this,
-                       &CConnectDlg::OnDirectoryServerChanged );
+    QObject::connect ( cbxDirectory, static_cast<void ( QComboBox::* ) ( int )> ( &QComboBox::activated ), this, &CConnectDlg::OnDirectoryChanged );
 
     // check boxes
     QObject::connect ( chbExpandAll, &QCheckBox::stateChanged, this, &CConnectDlg::OnExpandAllStateChanged );
@@ -181,6 +184,9 @@ CConnectDlg::CConnectDlg ( CClientSettings* pNSetP, const bool bNewShowCompleteR
     QObject::connect ( butCancel, &QPushButton::clicked, this, &CConnectDlg::close );
 
     QObject::connect ( butConnect, &QPushButton::clicked, this, &CConnectDlg::OnConnectClicked );
+
+    // tool buttons
+    QObject::connect ( tbtDeleteServerAddr, &QToolButton::clicked, this, &CConnectDlg::OnDeleteServerAddrClicked );
 
     // timers
     QObject::connect ( &TimerPing, &QTimer::timeout, this, &CConnectDlg::OnTimerPing );
@@ -223,19 +229,19 @@ void CConnectDlg::RequestServerList()
     lvwServers->clear();
 
     // update list combo box (disable events to avoid a signal)
-    cbxDirectoryServer->blockSignals ( true );
+    cbxDirectory->blockSignals ( true );
     if ( pSettings->eDirectoryType == AT_CUSTOM )
     {
         // iCustomDirectoryIndex is non-zero only if eDirectoryType == AT_CUSTOM
         // find the combobox item that corresponds to vstrDirectoryAddress[iCustomDirectoryIndex]
         // (the current selected custom directory)
-        cbxDirectoryServer->setCurrentIndex ( cbxDirectoryServer->findData ( QVariant ( pSettings->iCustomDirectoryIndex ) ) );
+        cbxDirectory->setCurrentIndex ( cbxDirectory->findData ( QVariant ( pSettings->iCustomDirectoryIndex ) ) );
     }
     else
     {
-        cbxDirectoryServer->setCurrentIndex ( static_cast<int> ( pSettings->eDirectoryType ) );
+        cbxDirectory->setCurrentIndex ( static_cast<int> ( pSettings->eDirectoryType ) );
     }
-    cbxDirectoryServer->blockSignals ( false );
+    cbxDirectory->blockSignals ( false );
 
     // Get the IP address of the directory server (using the ParseNetworAddress
     // function) when the connect dialog is opened, this seems to be the correct
@@ -265,7 +271,7 @@ void CConnectDlg::hideEvent ( QHideEvent* )
     TimerReRequestServList.stop();
 }
 
-void CConnectDlg::OnDirectoryServerChanged ( int iTypeIdx )
+void CConnectDlg::OnDirectoryChanged ( int iTypeIdx )
 {
     // store the new directory type and request new list
     // if iTypeIdx == AT_CUSTOM, then iCustomDirectoryIndex is the index into the vector holding the user's custom directory servers
@@ -273,7 +279,7 @@ void CConnectDlg::OnDirectoryServerChanged ( int iTypeIdx )
     if ( iTypeIdx >= AT_CUSTOM )
     {
         // the value for the index into the vector vstrDirectoryAddress is in the user data of the combobox item
-        pSettings->iCustomDirectoryIndex = cbxDirectoryServer->itemData ( iTypeIdx ).toInt();
+        pSettings->iCustomDirectoryIndex = cbxDirectory->itemData ( iTypeIdx ).toInt();
         iTypeIdx                         = AT_CUSTOM;
     }
     else
@@ -554,15 +560,15 @@ void CConnectDlg::OnServerAddrEditTextChanged ( const QString& )
 void CConnectDlg::OnCustomDirectoriesChanged()
 {
 
-    QString strPreviousSelection = cbxDirectoryServer->currentText();
-    UpdateDirectoryServerComboBox();
+    QString strPreviousSelection = cbxDirectory->currentText();
+    UpdateDirectoryComboBox();
     // after updating the combobox, we must re-select the previous directory selection
 
     if ( pSettings->eDirectoryType == AT_CUSTOM )
     {
         // check if the currently select custom directory still exists in the now potentially re-ordered vector,
         // if so, then change to its new index.  (addresses Issue #1899)
-        int iNewIndex = cbxDirectoryServer->findText ( strPreviousSelection, Qt::MatchExactly );
+        int iNewIndex = cbxDirectory->findText ( strPreviousSelection, Qt::MatchExactly );
         if ( iNewIndex == INVALID_INDEX )
         {
             // previously selected custom directory has been deleted.  change to default directory
@@ -574,18 +580,18 @@ void CConnectDlg::OnCustomDirectoriesChanged()
         {
             // find previously selected custom directory in the now potentially re-ordered vector
             pSettings->eDirectoryType        = static_cast<EDirectoryType> ( AT_CUSTOM );
-            pSettings->iCustomDirectoryIndex = cbxDirectoryServer->itemData ( iNewIndex ).toInt();
-            cbxDirectoryServer->blockSignals ( true );
-            cbxDirectoryServer->setCurrentIndex ( cbxDirectoryServer->findData ( QVariant ( pSettings->iCustomDirectoryIndex ) ) );
-            cbxDirectoryServer->blockSignals ( false );
+            pSettings->iCustomDirectoryIndex = cbxDirectory->itemData ( iNewIndex ).toInt();
+            cbxDirectory->blockSignals ( true );
+            cbxDirectory->setCurrentIndex ( cbxDirectory->findData ( QVariant ( pSettings->iCustomDirectoryIndex ) ) );
+            cbxDirectory->blockSignals ( false );
         }
     }
     else
     {
         // selected directory was not a custom directory
-        cbxDirectoryServer->blockSignals ( true );
-        cbxDirectoryServer->setCurrentIndex ( static_cast<int> ( pSettings->eDirectoryType ) );
-        cbxDirectoryServer->blockSignals ( false );
+        cbxDirectory->blockSignals ( true );
+        cbxDirectory->setCurrentIndex ( static_cast<int> ( pSettings->eDirectoryType ) );
+        cbxDirectory->blockSignals ( false );
     }
 }
 
@@ -732,6 +738,31 @@ void CConnectDlg::OnConnectClicked()
 
     // tell the parent window that the connection shall be initiated
     done ( QDialog::Accepted );
+}
+
+void CConnectDlg::OnDeleteServerAddrClicked()
+{
+    if ( cbxServerAddr->currentText().isEmpty() )
+    {
+        return;
+    }
+
+    // move later items down one
+    for ( int iLEIdx = 0; iLEIdx < MAX_NUM_SERVER_ADDR_ITEMS - 1; iLEIdx++ )
+    {
+        while ( pSettings->vstrIPAddress[iLEIdx].compare ( cbxServerAddr->currentText() ) == 0 )
+        {
+            for ( int jLEIdx = iLEIdx + 1; jLEIdx < MAX_NUM_SERVER_ADDR_ITEMS; jLEIdx++ )
+            {
+                pSettings->vstrIPAddress[jLEIdx - 1] = pSettings->vstrIPAddress[jLEIdx];
+            }
+        }
+    }
+    // empty last entry
+    pSettings->vstrIPAddress[MAX_NUM_SERVER_ADDR_ITEMS - 1] = QString();
+
+    // redisplay to pick up updated list
+    showEvent ( nullptr );
 }
 
 void CConnectDlg::OnTimerPing()
@@ -953,17 +984,17 @@ void CConnectDlg::DeleteAllListViewItemChilds ( QTreeWidgetItem* pItem )
     }
 }
 
-void CConnectDlg::UpdateDirectoryServerComboBox()
+void CConnectDlg::UpdateDirectoryComboBox()
 {
     // directory type combo box
-    cbxDirectoryServer->clear();
-    cbxDirectoryServer->addItem ( DirectoryTypeToString ( AT_DEFAULT ) );
-    cbxDirectoryServer->addItem ( DirectoryTypeToString ( AT_ANY_GENRE2 ) );
-    cbxDirectoryServer->addItem ( DirectoryTypeToString ( AT_ANY_GENRE3 ) );
-    cbxDirectoryServer->addItem ( DirectoryTypeToString ( AT_GENRE_ROCK ) );
-    cbxDirectoryServer->addItem ( DirectoryTypeToString ( AT_GENRE_JAZZ ) );
-    cbxDirectoryServer->addItem ( DirectoryTypeToString ( AT_GENRE_CLASSICAL_FOLK ) );
-    cbxDirectoryServer->addItem ( DirectoryTypeToString ( AT_GENRE_CHORAL ) );
+    cbxDirectory->clear();
+    cbxDirectory->addItem ( DirectoryTypeToString ( AT_DEFAULT ) );
+    cbxDirectory->addItem ( DirectoryTypeToString ( AT_ANY_GENRE2 ) );
+    cbxDirectory->addItem ( DirectoryTypeToString ( AT_ANY_GENRE3 ) );
+    cbxDirectory->addItem ( DirectoryTypeToString ( AT_GENRE_ROCK ) );
+    cbxDirectory->addItem ( DirectoryTypeToString ( AT_GENRE_JAZZ ) );
+    cbxDirectory->addItem ( DirectoryTypeToString ( AT_GENRE_CLASSICAL_FOLK ) );
+    cbxDirectory->addItem ( DirectoryTypeToString ( AT_GENRE_CHORAL ) );
 
     // because custom directories are always added to the top of the vector, add the vector
     // contents to the combobox in reverse order
@@ -972,7 +1003,7 @@ void CConnectDlg::UpdateDirectoryServerComboBox()
         if ( pSettings->vstrDirectoryAddress[i] != "" )
         {
             // add vector index (i) to the combobox as user data
-            cbxDirectoryServer->addItem ( pSettings->vstrDirectoryAddress[i], i );
+            cbxDirectory->addItem ( pSettings->vstrDirectoryAddress[i], i );
         }
     }
 }

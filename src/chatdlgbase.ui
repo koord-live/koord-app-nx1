@@ -28,7 +28,7 @@
   </property>
   <layout class="QVBoxLayout">
    <item>
-    <widget class="QTextBrowser" name="txvChatWindow_old">
+    <widget class="QTextBrowser" name="txvChatWindow">
      <property name="acceptDrops">
       <bool>false</bool>
      </property>
@@ -46,10 +46,10 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
-      <widget class="QLineEdit" name="edtLocalInputText_old"/>
+      <widget class="QLineEdit" name="edtLocalInputText"/>
      </item>
      <item>
-      <widget class="QPushButton" name="butSend_old">
+      <widget class="QPushButton" name="butSend">
        <property name="text">
         <string>&amp;Send</string>
        </property>
@@ -66,7 +66,7 @@
   </layout>
  </widget>
  <tabstops>
-  <tabstop>txvChatWindow_old</tabstop>
+  <tabstop>txvChatWindow</tabstop>
  </tabstops>
  <resources>
   <include location="resources.qrc"/>

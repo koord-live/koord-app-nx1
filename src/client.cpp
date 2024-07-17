@@ -1,5 +1,5 @@
 /******************************************************************************\
- * Copyright (c) 2004-2022
+ * Copyright (c) 2004-2024
  *
  * Author(s):
  *  Volker Fischer
@@ -477,7 +477,11 @@ void CClient::StartDelayTimer()
 bool CClient::SetServerAddr ( QString strNAddr )
 {
     CHostAddress HostAddress;
+#ifdef CLIENT_NO_SRV_CONNECT
     if ( NetworkUtil().ParseNetworkAddress ( strNAddr, HostAddress, bEnableIPv6 ) )
+#else
+    if ( NetworkUtil().ParseNetworkAddressWithSrvDiscovery ( strNAddr, HostAddress, bEnableIPv6 ) )
+#endif
     {
         // apply address to the channel
         Channel.SetAddress ( HostAddress );
@@ -1245,26 +1249,18 @@ void CClient::ProcessAudioDataIntern ( CVector<int16_t>& vecsStereoSndCrd )
         }
     }
 
-    for ( i = 0; i < iSndCrdFrameSizeFactor; i++ )
+    for ( i = 0, j = 0; i < iSndCrdFrameSizeFactor; i++, j += iNumAudioChannels * iOPUSFrameSizeSamples )
     {
         // OPUS encoding
         if ( CurOpusEncoder != nullptr )
         {
             if ( bMuteOutStream )
             {
-                iUnused = opus_custom_encode ( CurOpusEncoder,
-                                               &vecZeros[i * iNumAudioChannels * iOPUSFrameSizeSamples],
-                                               iOPUSFrameSizeSamples,
-                                               &vecCeltData[0],
-                                               iCeltNumCodedBytes );
+                iUnused = opus_custom_encode ( CurOpusEncoder, &vecZeros[j], iOPUSFrameSizeSamples, &vecCeltData[0], iCeltNumCodedBytes );
             }
             else
             {
-                iUnused = opus_custom_encode ( CurOpusEncoder,
-                                               &vecsStereoSndCrd[i * iNumAudioChannels * iOPUSFrameSizeSamples],
-                                               iOPUSFrameSizeSamples,
-                                               &vecCeltData[0],
-                                               iCeltNumCodedBytes );
+                iUnused = opus_custom_encode ( CurOpusEncoder, &vecsStereoSndCrd[j], iOPUSFrameSizeSamples, &vecCeltData[0], iCeltNumCodedBytes );
             }
         }
 
@@ -1279,7 +1275,7 @@ void CClient::ProcessAudioDataIntern ( CVector<int16_t>& vecsStereoSndCrd )
         vecsStereoSndCrdMuteStream = vecsStereoSndCrd;
     }
 
-    for ( i = 0; i < iSndCrdFrameSizeFactor; i++ )
+    for ( i = 0, j = 0; i < iSndCrdFrameSizeFactor; i++, j += iNumAudioChannels * iOPUSFrameSizeSamples )
     {
         // receive a new block
         const bool bReceiveDataOk = ( Channel.GetData ( vecbyNetwData, iCeltNumCodedBytes ) == GS_BUFFER_OK );
@@ -1304,11 +1300,7 @@ void CClient::ProcessAudioDataIntern ( CVector<int16_t>& vecsStereoSndCrd )
         // OPUS decoding
         if ( CurOpusDecoder != nullptr )
         {
-            iUnused = opus_custom_decode ( CurOpusDecoder,
-                                           pCurCodedData,
-                                           iCeltNumCodedBytes,
-                                           &vecsStereoSndCrd[i * iNumAudioChannels * iOPUSFrameSizeSamples],
-                                           iOPUSFrameSizeSamples );
+            iUnused = opus_custom_decode ( CurOpusDecoder, pCurCodedData, iCeltNumCodedBytes, &vecsStereoSndCrd[j], iOPUSFrameSizeSamples );
         }
     }
 

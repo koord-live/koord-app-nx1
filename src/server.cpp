@@ -1,5 +1,5 @@
 /******************************************************************************\
- * Copyright (c) 2004-2022
+ * Copyright (c) 2004-2024
  *
  * Author(s):
  *  Volker Fischer
@@ -31,7 +31,7 @@ CServer::CServer ( const int          iNewMaxNumChan,
                    const quint16      iPortNumber,
                    const quint16      iQosNumber,
                    const QString&     strHTMLStatusFileName,
-                   const QString&     strDirectoryServer,
+                   const QString&     strDirectoryAddress,
                    const QString&     strServerListFileName,
                    const QString&     strServerInfo,
                    const QString&     strServerListFilter,
@@ -56,7 +56,7 @@ CServer::CServer ( const int          iNewMaxNumChan,
     strServerHTMLFileListName ( strHTMLStatusFileName ),
     HighPrecisionTimer ( bNUseDoubleSystemFrameSize ),
     ServerListManager ( iPortNumber,
-                        strDirectoryServer,
+                        strDirectoryAddress,
                         strServerListFileName,
                         strServerInfo,
                         strServerPublicIP,
@@ -1469,16 +1469,18 @@ bool CServer::PutAudioData ( const CVector<uint8_t>& vecbyRecBuf, const int iNum
     return bNewConnection;
 }
 
-void CServer::GetConCliParam ( CVector<CHostAddress>& vecHostAddresses,
-                               CVector<QString>&      vecsName,
-                               CVector<int>&          veciJitBufNumFrames,
-                               CVector<int>&          veciNetwFrameSizeFact )
+void CServer::GetConCliParam ( CVector<CHostAddress>&     vecHostAddresses,
+                               CVector<QString>&          vecsName,
+                               CVector<int>&              veciJitBufNumFrames,
+                               CVector<int>&              veciNetwFrameSizeFact,
+                               CVector<CChannelCoreInfo>& vecChanInfo )
 {
     // init return values
     vecHostAddresses.Init ( iMaxNumChannels );
     vecsName.Init ( iMaxNumChannels );
     veciJitBufNumFrames.Init ( iMaxNumChannels );
     veciNetwFrameSizeFact.Init ( iMaxNumChannels );
+    vecChanInfo.Init ( iMaxNumChannels );
 
     // check all possible channels
     for ( int i = 0; i < iMaxNumChannels; i++ )
@@ -1490,6 +1492,7 @@ void CServer::GetConCliParam ( CVector<CHostAddress>& vecHostAddresses,
             vecsName[i]              = vecChannels[i].GetName();
             veciJitBufNumFrames[i]   = vecChannels[i].GetSockBufNumFrames();
             veciNetwFrameSizeFact[i] = vecChannels[i].GetNetwFrameSizeFact();
+            vecChanInfo[i]           = vecChannels[i].GetChanInfo();
         }
     }
 }

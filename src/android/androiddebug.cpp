@@ -1,5 +1,5 @@
 /******************************************************************************\
- * Copyright (c) 2020-2022
+ * Copyright (c) 2020-2024
  *
  * Author(s):
  *  Simon Tomlinson
@@ -22,7 +22,7 @@
  *
 \******************************************************************************/
 
-const char* const applicationName = "Koord";
+const char* const applicationName = "Jamulus";
 
 #ifdef ANDROIDDEBUG // Set in my myapp.pro file for android builds
 #    include <android/log.h>

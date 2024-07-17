@@ -1,5 +1,5 @@
 /******************************************************************************\
- * Copyright (c) 2004-2022
+ * Copyright (c) 2004-2024
  *
  * Author(s):
  *  Volker Fischer
@@ -78,11 +78,7 @@ QStringList CSoundBase::GetDevNames()
     QStringList slDevNames;
 
     // put all device names in the string list
-#ifdef WIN32    
-    for ( int iDev = 0; iDev < lNumDevs+1; iDev++ ) // account for extra ASIO built-in driver
-#else
     for ( int iDev = 0; iDev < lNumDevs; iDev++ )
-#endif
     {
         slDevNames << strDriverNames[iDev];
     }

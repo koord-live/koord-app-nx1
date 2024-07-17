@@ -1,5 +1,5 @@
 /******************************************************************************\
- * Copyright (c) 2004-2022
+ * Copyright (c) 2004-2024
  *
  * Author(s):
  *  Volker Fischer
@@ -50,7 +50,7 @@
 #        if defined( Q_OS_IOS )
 #            include "sound/coreaudio-ios/sound.h"
 #        else
-#            if defined (Q_OS_ANDROID)
+#            ifdef ANDROID
 #                include "sound/oboe/sound.h"
 #            else
 #                include "sound/jack/sound.h"

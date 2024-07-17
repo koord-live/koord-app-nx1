@@ -1,5 +1,5 @@
 /******************************************************************************\
- * Copyright (c) 2004-2022
+ * Copyright (c) 2004-2024
  *
  * Author(s):
  *  Volker Fischer
@@ -30,14 +30,14 @@
 /* Implementation *************************************************************/
 CMultiColorLED::CMultiColorLED ( QWidget* parent ) :
     QLabel ( parent ),
-    BitmCubeDisabled ( QString::fromUtf8 ( ":/png/LEDs/res/IndicatorGreyFancy.png" ) ),
-    BitmCubeGrey ( QString::fromUtf8 ( ":/png/LEDs/res/IndicatorGreyFancy.png" ) ),
-    BitmCubeGreen ( QString::fromUtf8 ( ":/png/LEDs/res/IndicatorGreenFancy.png" ) ),
+    BitmCubeDisabled ( QString::fromUtf8 ( ":/png/LEDs/res/CLEDDisabled.png" ) ),
+    BitmCubeGrey ( QString::fromUtf8 ( ":/png/LEDs/res/CLEDGrey.png" ) ),
+    BitmCubeGreen ( QString::fromUtf8 ( ":/png/LEDs/res/CLEDGreenBig.png" ) ),
     BitmCubeYellow ( QString::fromUtf8 ( ":/png/LEDs/res/IndicatorYellowFancy.png" ) ),
     BitmCubeRed ( QString::fromUtf8 ( ":/png/LEDs/res/IndicatorRedFancy.png" ) ),
-    BitmIndicatorGreen ( QString::fromUtf8 ( ":/png/LEDs/res/IndicatorGreenFancy.png" ) ),
-    BitmIndicatorYellow ( QString::fromUtf8 ( ":/png/LEDs/res/IndicatorYellowFancy.png" ) ),
-    BitmIndicatorRed ( QString::fromUtf8 ( ":/png/LEDs/res/IndicatorRedFancy.png" ) )
+    BitmIndicatorGreen ( QString::fromUtf8 ( ":/png/LEDs/res/IndicatorGreen.png" ) ),
+    BitmIndicatorYellow ( QString::fromUtf8 ( ":/png/LEDs/res/IndicatorYellow.png" ) ),
+    BitmIndicatorRed ( QString::fromUtf8 ( ":/png/LEDs/res/IndicatorRed.png" ) )
 {
     // set init bitmap
     setPixmap ( BitmCubeGrey );

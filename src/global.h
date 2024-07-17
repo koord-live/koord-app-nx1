@@ -1,5 +1,5 @@
 /******************************************************************************\
- * \Copyright (c) 2004-2022
+ * \Copyright (c) 2004-2024
  * \author    Volker Fischer
  *
 
@@ -74,7 +74,7 @@ LED bar:      lbr
 // version and application name (use version from qt prject file)
 #undef VERSION
 #define VERSION  APP_VERSION
-#define APP_NAME "Koord"
+#define APP_NAME "Jamulus"
 
 // Windows registry key name of auto run entry for the server
 #define AUTORUN_SERVER_REG_NAME "Jamulus server"
@@ -112,6 +112,11 @@ LED bar:      lbr
 // servers to check for new versions
 #define UPDATECHECK1_ADDRESS "updatecheck1.jamulus.io"
 #define UPDATECHECK2_ADDRESS "updatecheck2.jamulus.io"
+
+// getting started and software manual URL
+#define CLIENT_GETTING_STARTED_URL "https://jamulus.io/wiki/Getting-Started"
+#define SERVER_GETTING_STARTED_URL "https://jamulus.io/wiki/Running-a-Server"
+#define SOFTWARE_MANUAL_URL        "https://jamulus.io/wiki/Software-Manual"
 
 // app update message
 #define APP_UPGRADE_AVAILABLE_MSG_TEXT \
@@ -184,10 +189,6 @@ LED bar:      lbr
 // the channel selection combo box regardless of the actual available number
 // of channels by the audio device)
 #define MAX_NUM_IN_OUT_CHANNELS 64
-
-// fixes Windows (at least) failing startup with mono mic - https://github.com/jamulussoftware/jamulus/issues/2344
-#define MIN_IN_CHANNELS 1
-#define MIN_OUT_CHANNELS 2
 
 // maximum number of elemts in the server address combo box
 #define MAX_NUM_SERVER_ADDR_ITEMS 12
@@ -283,8 +284,8 @@ LED bar:      lbr
 // minimum length of JSON-RPC secret string (main.cpp)
 #define JSON_RPC_MINIMUM_SECRET_LENGTH 16
 
-// JSON-RPC listen address
-#define JSON_RPC_LISTEN_ADDRESS "127.0.0.1"
+// JSON-RPC listen address (Default)
+#define DEFAULT_JSON_RPC_LISTEN_ADDRESS "127.0.0.1"
 
 #define _MAXSHORT     32767
 #define _MINSHORT     ( -32768 )
@@ -373,5 +374,3 @@ bool GetNumericArgument ( int     argc,
                           double  rRangeStart,
                           double  rRangeStop,
                           double& rValue );
-
-bool event (QEvent *event);

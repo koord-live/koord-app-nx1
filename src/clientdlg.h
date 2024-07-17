@@ -1,5 +1,5 @@
 /******************************************************************************\
- * Copyright (c) 2004-2022
+ * Copyright (c) 2004-2024
  *
  * Author(s):
  *  Volker Fischer
@@ -24,10 +24,6 @@
 
 #pragma once
 
-#include "qnetworkaccessmanager.h"
-#include "qnetworkreply.h"
-#include "qtreewidget.h"
-//#include "urlhandler.h"
 #include <QLabel>
 #include <QString>
 #include <QLineEdit>
@@ -38,30 +34,28 @@
 #include <QSlider>
 #include <QRadioButton>
 #include <QMenuBar>
-#include <QButtonGroup>
 #include <QLayout>
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QActionGroup>
-#include <QMainWindow>
-//#include <QSoundEffect>
+#include <QSoundEffect>
 #if QT_VERSION >= QT_VERSION_CHECK( 5, 6, 0 )
 #    include <QVersionNumber>
 #endif
-//#include "global.h"
+#include "global.h"
 #include "util.h"
 #include "client.h"
 #include "settings.h"
 #include "multicolorled.h"
 #include "audiomixerboard.h"
+#include "clientsettingsdlg.h"
+#include "chatdlg.h"
+#include "connectdlg.h"
 #include "analyzerconsole.h"
 #include "ui_clientdlgbase.h"
 #if defined( Q_OS_MACOS )
 #    include "mac/badgelabel.h"
 #endif
-#include <QQuickWidget>
-#include <QQuickView>
-//#include "unsafearea.h"
 
 /* Definitions ****************************************************************/
 // update time for GUI controls
@@ -74,16 +68,10 @@
 // number of ping times > upper bound until error message is shown
 #define NUM_HIGH_PINGS_UNTIL_ERROR 5
 
-#define DISPLAY_UPDATE_TIME 1000 // ms
-
-#define SERV_LIST_REQ_UPDATE_TIME_MS 2000 // ms
-
 /* Classes ********************************************************************/
-class CClientDlg : public QMainWindow, private Ui_CClientDlgBase
+class CClientDlg : public CBaseDlg, private Ui_CClientDlgBase
 {
     Q_OBJECT
-    Q_PROPERTY( QString video_url READ getVideoUrl NOTIFY videoUrlChanged )
-
 
 public:
     CClientDlg ( CClient*         pNCliP,
@@ -95,39 +83,12 @@ public:
                  const bool       bMuteStream,
                  const bool       bNEnableIPv6,
                  QWidget*         parent = nullptr );
-//    // session chat
-//    void AddChatText ( QString strChatText );
-    // settings
-    void UpdateUploadRate();
-    void UpdateDisplay();
-    void UpdateSettingsDisplay();
-    void UpdateSoundDeviceChannelSelectionFrame();
-    void SetEnableFeedbackDetection ( bool enable );
-
-    // for QML
-    QString getVideoUrl() const {
-        qInfo() << ">>> Calling getVideoUrl and returning value: " << strVideoUrl;
-        return strVideoUrl;
-    };
-
-    // region checker stuff
-    void SetShowAllMusicians ( const bool bState ) { ShowAllMusicians ( bState ); }
-    bool GetShowAllMusicians() { return bShowAllMusicians; }
-    void SetServerList ( const CHostAddress& InetAddr, const CVector<CServerInfo>& vecServerInfo, const bool bIsReducedServerList = false );
-    void SetConnClientsList ( const CHostAddress& InetAddr, const CVector<CChannelInfo>& vecChanInfo );
-    void SetPingTimeAndNumClientsResult ( const CHostAddress& InetAddr, const int iPingTime, const int iNumClients );
-    bool    GetServerListItemWasChosen() const { return bServerListItemWasChosen; }
-    QString GetSelectedAddress() const { return strSelectedAddress; }
-    QString GetSelectedServerName() const { return strSelectedServerName; }
 
 protected:
     void SetGUIDesign ( const EGUIDesign eNewDesign );
     void SetMeterStyle ( const EMeterStyle eNewMeterStyle );
     void SetMyWindowTitle ( const int iNumClients );
-//    void ShowConnectionSetupDialog();
-//    void ShowBasicConnectionSetupDialog();
-    void ShowJoinWidget();
-    void HideJoinWidget();
+    void ShowConnectionSetupDialog();
     void ShowGeneralSettings ( int iTab );
     void ShowChatWindow ( const bool bForceRaise = true );
     void ShowAnalyzerConsole();
@@ -140,13 +101,10 @@ protected:
 
     CClient*         pClient;
     CClientSettings* pSettings;
-//    UnsafeArea*    mUnsafeArea;
 
     int            iClients;
     bool           bConnected;
     bool           bConnectDlgWasShown;
-//    bool           bBasicConnectDlgWasShown;
-    bool           bMIDICtrlUsed;
     bool           bDetectFeedback;
     bool           bEnableIPv6;
     ERecorderState eLastRecorderState;
@@ -157,74 +115,23 @@ protected:
     QTimer         TimerPing;
     QTimer         TimerCheckAudioDeviceOk;
     QTimer         TimerDetectFeedback;
-    // for join
-    QString        strSelectedAddress;
-    QString        strVideoUrl;
-    QString        strVideoHost;
-    QString        strSessionHash;
-#if defined(Q_OS_ANDROID)
-    QQuickWidget*   quickWidget;
-#else
-    QQuickView*     quickView;
-#endif
-    QNetworkAccessManager*   qNam;
 
     virtual void closeEvent ( QCloseEvent* Event );
     virtual void dragEnterEvent ( QDragEnterEvent* Event ) { ManageDragNDrop ( Event, true ); }
     virtual void dropEvent ( QDropEvent* Event ) { ManageDragNDrop ( Event, false ); }
+    void         UpdateDisplay();
 
+    CClientSettingsDlg ClientSettingsDlg;
+    CChatDlg           ChatDlg;
+    CConnectDlg        ConnectDlg;
     CAnalyzerConsole   AnalyzerConsole;
-
-    // settings stuff
-    void    UpdateJitterBufferFrame();
-    void    UpdateSoundCardFrame();
-    void    UpdateDirectoryServerComboBox();
-//    void    UpdateAudioFaderSlider();
-    QString GenSndCrdBufferDelayString ( const int iFrameSize, const QString strAddText = "" );
-    virtual void showEvent ( QShowEvent* );
-//    CClient*         pClient;
-//    CClientSettings* pSettings;
-//    QTimer           TimerStatus;
-    QButtonGroup     SndCrdBufferDelayButtonGroup;
-
-    // regionchecker stuff
-//    virtual void showEvent ( QShowEvent* );
-//    virtual void hideEvent ( QHideEvent* );
-    QTreeWidgetItem* FindListViewItem ( const CHostAddress& InetAddr );
-    QTreeWidgetItem* GetParentListViewItem ( QTreeWidgetItem* pItem );
-    void             DeleteAllListViewItemChilds ( QTreeWidgetItem* pItem );
-    void             UpdateListFilter();
-    void             ShowAllMusicians ( const bool bState );
-    void             RequestServerList();
-    void             EmitCLServerListPingMes ( const CHostAddress& haServerAddress );
-//    void             UpdateDirectoryServerComboBox();
-//    CClientSettings* pSettings;
-    QTimer       RegionTimerPing;
-    QTimer       TimerReRequestServList;
-    QTimer       TimerInitialSort;
-    CHostAddress haDirectoryAddress;
-    QString      strSelectedServerName;
-    bool         bShowCompleteRegList;
-    bool         bServerListReceived;
-    bool         bReducedServerListReceived;
-    bool         bServerListItemWasChosen;
-    bool         bListFilterWasActive;
-    bool         bShowAllMusicians;
-//    bool         bEnableIPv6;
-
-    // for urlhandler
-//    UrlHandler* url_handler;
 
 public slots:
     void OnConnectDisconBut();
-    void OnInviteBoxActivated();
-    void OnNewStartClicked();
     void OnTimerSigMet();
     void OnTimerBuffersLED();
     void OnTimerCheckAudioDeviceOk();
     void OnTimerDetectFeedback();
-
-    void replyFinished(QNetworkReply *rep);
 
     void OnTimerStatus() { UpdateDisplay(); }
 
@@ -248,11 +155,11 @@ public slots:
 
     void OnLoadChannelSetup();
     void OnSaveChannelSetup();
-//    void OnOpenConnectionSetupDialog() { ShowBasicConnectionSetupDialog(); }
-//    void OnOpenUserProfileSettings();
-//    void OnOpenAudioNetSettings();
-//    void OnOpenAdvancedSettings();
-//    void OnOpenChatDialog() { ShowChatWindow(); }
+    void OnOpenConnectionSetupDialog() { ShowConnectionSetupDialog(); }
+    void OnOpenUserProfileSettings();
+    void OnOpenAudioNetSettings();
+    void OnOpenAdvancedSettings();
+    void OnOpenChatDialog() { ShowChatWindow(); }
     void OnOpenAnalyzerConsole() { ShowAnalyzerConsole(); }
     void OnOwnFaderFirst()
     {
@@ -261,16 +168,15 @@ public slots:
     }
     void OnNoSortChannels() { MainMixerBoard->SetFaderSorting ( ST_NO_SORT ); }
     void OnSortChannelsByName() { MainMixerBoard->SetFaderSorting ( ST_BY_NAME ); }
-//    void OnSortChannelsByInstrument() { MainMixerBoard->SetFaderSorting ( ST_BY_INSTRUMENT ); }
+    void OnSortChannelsByInstrument() { MainMixerBoard->SetFaderSorting ( ST_BY_INSTRUMENT ); }
     void OnSortChannelsByGroupID() { MainMixerBoard->SetFaderSorting ( ST_BY_GROUPID ); }
-//    void OnSortChannelsByCity() { MainMixerBoard->SetFaderSorting ( ST_BY_CITY ); }
+    void OnSortChannelsByCity() { MainMixerBoard->SetFaderSorting ( ST_BY_CITY ); }
     void OnClearAllStoredSoloMuteSettings();
     void OnSetAllFadersToNewClientLevel() { MainMixerBoard->SetAllFaderLevelsToNewClientLevel(); }
     void OnAutoAdjustAllFaderLevels() { MainMixerBoard->AutoAdjustAllFaderLevels(); }
     void OnNumMixerPanelRowsChanged ( int value ) { MainMixerBoard->SetNumMixerPanelRows ( value ); }
 
     void OnSettingsStateChanged ( int value );
-//    void OnPubConnectStateChanged ( int value );
     void OnChatStateChanged ( int value );
     void OnLocalMuteStateChanged ( int value );
 
@@ -280,11 +186,11 @@ public slots:
 
     void OnReverbSelRClicked() { pClient->SetReverbOnLeftChan ( false ); }
 
-//    void OnFeedbackDetectionChanged ( int state ) { SetEnableFeedbackDetection ( state == Qt::Checked ); }
+    void OnFeedbackDetectionChanged ( int state ) { ClientSettingsDlg.SetEnableFeedbackDetection ( state == Qt::Checked ); }
 
     void OnConClientListMesReceived ( CVector<CChannelInfo> vecChanInfo );
-//    void OnChatTextReceived ( QString strChatText );
-//    void OnLicenceRequired ( ELicenceType eLicenceType );
+    void OnChatTextReceived ( QString strChatText );
+    void OnLicenceRequired ( ELicenceType eLicenceType );
     void OnSoundDeviceChanged ( QString strError );
 
     void OnChangeChanGain ( int iId, float fGain, bool bIsMyOwnFader ) { pClient->SetRemoteChanGain ( iId, fGain, bIsMyOwnFader ); }
@@ -301,20 +207,20 @@ public slots:
 
     void OnCreateCLServerListReqConnClientsListMes ( CHostAddress InetAddr ) { pClient->CreateCLServerListReqConnClientsListMes ( InetAddr ); }
 
-     void OnCLServerListReceived ( CHostAddress InetAddr, CVector<CServerInfo> vecServerInfo )
-     {
-         SetServerList ( InetAddr, vecServerInfo );
-     }
+    void OnCLServerListReceived ( CHostAddress InetAddr, CVector<CServerInfo> vecServerInfo )
+    {
+        ConnectDlg.SetServerList ( InetAddr, vecServerInfo );
+    }
 
-     void OnCLRedServerListReceived ( CHostAddress InetAddr, CVector<CServerInfo> vecServerInfo )
-     {
-         SetServerList ( InetAddr, vecServerInfo, true );
-     }
+    void OnCLRedServerListReceived ( CHostAddress InetAddr, CVector<CServerInfo> vecServerInfo )
+    {
+        ConnectDlg.SetServerList ( InetAddr, vecServerInfo, true );
+    }
 
-     void OnCLConnClientsListMesReceived ( CHostAddress InetAddr, CVector<CChannelInfo> vecChanInfo )
-     {
-         SetConnClientsList ( InetAddr, vecChanInfo );
-     }
+    void OnCLConnClientsListMesReceived ( CHostAddress InetAddr, CVector<CChannelInfo> vecChanInfo )
+    {
+        ConnectDlg.SetConnClientsList ( InetAddr, vecChanInfo );
+    }
 
     void OnClientIDReceived ( int iChanID ) { MainMixerBoard->SetMyChannelID ( iChanID ); }
 
@@ -325,11 +231,7 @@ public slots:
         MainMixerBoard->SetChannelLevels ( vecLevelList );
     }
 
-    void OnJoinCancelClicked();
-    void OnEventJoinConnectClicked ( const QString& url );
-    void OnJoinConnectClicked();
-//    void OnBasicConnectDlgAccepted();
-//    void OnConnectDlgAccepted();
+    void OnConnectDlgAccepted();
     void OnDisconnected() { Disconnect(); }
     void OnGUIDesignChanged();
     void OnMeterStyleChanged();
@@ -338,90 +240,8 @@ public slots:
     void OnAudioChannelsChanged() { UpdateRevSelection(); }
     void OnNumClientsChanged ( int iNewNumClients );
 
-    // updates
-    void OnCheckForUpdate();
-    void OnDownloadUpdateClicked();
-
-//    // session chat stuff ========================
-//    void OnSendText();
-//    void OnLocalInputTextTextChanged ( const QString& strNewText );
-//    void OnClearChatHistory();
-//    void OnAnchorClicked ( const QUrl& Url );
-//    // end session chat stuff ========================
-
-    // settings stuff ==========================================
-//    void OnTimerStatus() { UpdateDisplay(); }
-    void OnNetBufValueChanged ( int value );
-    void OnNetBufServerValueChanged ( int value );
-    void OnAutoJitBufStateChanged ( int value );
-    void OnEnableOPUS64StateChanged ( int value );
-    void OnFeedbackDetectionChanged ( int value );
-    void OnCustomDirectoriesEditingFinished();
-    void OnNewClientLevelEditingFinished() { pSettings->iNewClientFaderLevel = edtNewClientLevel->text().toInt(); }
-    void OnNewClientLevelChanged();
-    void OnInputBoostChanged();
-    void OnSndCrdBufferDelayButtonGroupClicked ( QAbstractButton* button );
-    void OnSoundcardActivated ( int iSndDevIdx );
-    void OnLInChanActivated ( int iChanIdx );
-    void OnRInChanActivated ( int iChanIdx );
-    void OnLOutChanActivated ( int iChanIdx );
-    void OnROutChanActivated ( int iChanIdx );
-    void OnAudioChannelsActivated ( int iChanIdx );
-    void OnAudioQualityActivated ( int iQualityIdx );
-    void OnGUIDesignActivated ( int iDesignIdx );
-    void OnMeterStyleActivated ( int iMeterStyleIdx );
-    void OnLanguageChanged ( QString strLanguage ) { pSettings->strLanguage = strLanguage; }
-    void OnAliasTextChanged ( const QString& strNewName );
-//    void OnInstrumentActivated ( int iCntryListItem );
-//    void OnCountryActivated ( int iCntryListItem );
-//    void OnCityTextChanged ( const QString& strNewName );
-//    void OnSkillActivated ( int iCntryListItem );
-//    void OnTabChanged();
-//    void OnMakeTabChange ( int iTabIdx );
-    void OnAudioPanValueChanged ( int value );
-#if defined( _WIN32 ) && !defined( WITH_JACK )
-    // Only include this slot for Windows when JACK is NOT used
-    void OnDriverSetupClicked();
-#endif
-    // end of settings stuff ===================================
-
     void accept() { close(); } // introduced by pljones
-
-
-    // regionchecker stuff
-//    void OnServerListItemDoubleClicked ( QTreeWidgetItem* Item, int );
-    void OnServerAddrEditTextChanged ( const QString& );
-    void OnDirectoryServerChanged ( int iTypeIdx );
-//    void OnFilterTextEdited ( const QString& ) { UpdateListFilter(); }
-//    void OnExpandAllStateChanged ( int value ) { ShowAllMusicians ( value == Qt::Checked ); }
-    void OnCustomDirectoriesChanged();
-//    void OnConnectClicked();
-    void OnRegionTimerPing();
-    void OnTimerReRequestServList();
-
-    void OnConnectFromURLHandler(const QString& connect_url);
-//    void setDefaultSingleUserMode(const QString& value);
 
 signals:
     void SendTabChange ( int iTabIdx );
-    void NewLocalInputText ( QString strNewText );
-
-    // settings stuff
-    void GUIDesignChanged();
-    void MeterStyleChanged();
-    void AudioChannelsChanged();
-    void CustomDirectoriesChanged();
-    void NumMixerPanelRowsChanged ( int value );
-
-    // for QML
-    void videoUrlChanged();
-
-    //region checker stuff
-    void ReqServerListQuery ( CHostAddress InetAddr );
-    void CreateCLServerListPingMes ( CHostAddress InetAddr );
-    void CreateCLServerListReqVerAndOSMes ( CHostAddress InetAddr );
-    void CreateCLServerListReqConnClientsListMes ( CHostAddress InetAddr );
-
-    // custom macOS url handler stuff
-    void EventJoinConnectClicked( const QString &url );
 };

@@ -1,5 +1,5 @@
 /******************************************************************************\
- * Copyright (c) 2004-2022
+ * Copyright (c) 2004-2024
  *
  * Author(s):
  *  Volker Fischer
@@ -25,7 +25,7 @@
 #include "settings.h"
 
 /* Implementation *************************************************************/
-void CSettings::Load ( const QList<QString> CommandLineOptions )
+void CSettings::Load ( const QList<QString>& CommandLineOptions )
 {
     // prepare file name for loading initialization data from XML file and read
     // data from file if possible
@@ -36,13 +36,13 @@ void CSettings::Load ( const QList<QString> CommandLineOptions )
     ReadSettingsFromXML ( IniXMLDocument, CommandLineOptions );
 }
 
-void CSettings::Save()
+void CSettings::Save ( bool isAboutToQuit )
 {
     // create XML document for storing initialization parameters
     QDomDocument IniXMLDocument;
 
     // write the settings in the XML file
-    WriteSettingsToXML ( IniXMLDocument );
+    WriteSettingsToXML ( IniXMLDocument, isAboutToQuit );
 
     // prepare file name for storing initialization data in XML file and store
     // XML data in file
@@ -226,13 +226,11 @@ void CClientSettings::SaveFaderSettings ( const QString& strCurFileName )
     WriteToFile ( strCurFileName, IniXMLDocument );
 }
 
-void CClientSettings::ReadSettingsFromXML ( const QDomDocument& IniXMLDocument, const QList<QString>& CommandLineOptions )
+void CClientSettings::ReadSettingsFromXML ( const QDomDocument& IniXMLDocument, const QList<QString>& )
 {
     int  iIdx;
     int  iValue;
     bool bValue;
-
-    bCleanUpLegacyFaderSettings = CommandLineOptions.contains ( "--cleanuplegacyfadersettings" );
 
     // IP addresses
     for ( iIdx = 0; iIdx < MAX_NUM_SERVER_ADDR_ITEMS; iIdx++ )
@@ -531,12 +529,6 @@ void CClientSettings::ReadSettingsFromXML ( const QDomDocument& IniXMLDocument, 
     // window position of the connect window
     vecWindowPosConnect = FromBase64ToByteArray ( GetIniSetting ( IniXMLDocument, "client", "winposcon_base64" ) );
 
-    // set Test setting
-    strTestMode = FromBase64ToByteArray ( GetIniSetting ( IniXMLDocument, "client", "test_setting" ) );
-
-    // window position of the basic connect window
-//    vecWindowPosBasicConnect = FromBase64ToByteArray ( GetIniSetting ( IniXMLDocument, "client", "winposbascon_base64" ) );
-
     // visibility state of the settings window
     if ( GetFlagIniSet ( IniXMLDocument, "client", "winvisset", bValue ) )
     {
@@ -555,12 +547,6 @@ void CClientSettings::ReadSettingsFromXML ( const QDomDocument& IniXMLDocument, 
         bWindowWasShownConnect = bValue;
     }
 
-//    // visibility state of the connect window
-//    if ( GetFlagIniSet ( IniXMLDocument, "client", "winvisbascon", bValue ) )
-//    {
-//        bWindowWasShownBasicConnect = bValue;
-//    }
-
     // selected Settings Tab
     if ( GetNumericIniSet ( IniXMLDocument, "client", "settingstab", 0, 2, iValue ) )
     {
@@ -569,53 +555,6 @@ void CClientSettings::ReadSettingsFromXML ( const QDomDocument& IniXMLDocument, 
 
     // fader settings
     ReadFaderSettingsFromXML ( IniXMLDocument );
-}
-
-QString CClientSettings::CleanUpLegacyFaderSetting ( QString strFaderTag, int iIdx )
-{
-    bool ok;
-    int  iIdy;
-    bool bDup;
-
-    if ( !bCleanUpLegacyFaderSettings || strFaderTag.isEmpty() )
-    {
-        return strFaderTag;
-    }
-
-    QStringList slChanFaderTag = strFaderTag.split ( ":" );
-    if ( slChanFaderTag.size() != 2 )
-    {
-        return strFaderTag;
-    }
-
-    const int iChan = slChanFaderTag[0].toInt ( &ok );
-    if ( ok && iChan >= 0 && iChan <= MAX_NUM_CHANNELS )
-    {
-        // *assumption*: legacy tag that needs cleaning up
-        strFaderTag = slChanFaderTag[1];
-    }
-
-    // duplicate detection
-    // this assumes the first entry into the vector is the newest one and skips any later ones.
-    // the alternative is to use iIdy for the vector entry, so overwriting the duplicate.
-    // (in both cases, this currently leaves holes in the vector.)
-    bDup = false;
-    for ( iIdy = 0; iIdy < iIdx; iIdy++ )
-    {
-        if ( strFaderTag == vecStoredFaderTags[iIdy] )
-        {
-            // duplicate entry
-            bDup = true;
-            break;
-        }
-    }
-    if ( bDup )
-    {
-        // so skip all settings for this iIdx (use iIdx here even if using iIdy and not doing continue below)
-        return QString();
-    }
-
-    return strFaderTag;
 }
 
 void CClientSettings::ReadFaderSettingsFromXML ( const QDomDocument& IniXMLDocument )
@@ -627,9 +566,8 @@ void CClientSettings::ReadFaderSettingsFromXML ( const QDomDocument& IniXMLDocum
     for ( iIdx = 0; iIdx < MAX_NUM_STORED_FADER_SETTINGS; iIdx++ )
     {
         // stored fader tags
-        QString strFaderTag = CleanUpLegacyFaderSetting (
-            FromBase64ToString ( GetIniSetting ( IniXMLDocument, "client", QString ( "storedfadertag%1_base64" ).arg ( iIdx ), "" ) ),
-            iIdx );
+        QString strFaderTag =
+            FromBase64ToString ( GetIniSetting ( IniXMLDocument, "client", QString ( "storedfadertag%1_base64" ).arg ( iIdx ), "" ) );
 
         if ( strFaderTag.isEmpty() )
         {
@@ -676,8 +614,9 @@ void CClientSettings::ReadFaderSettingsFromXML ( const QDomDocument& IniXMLDocum
     }
 }
 
-void CClientSettings::WriteSettingsToXML ( QDomDocument& IniXMLDocument )
+void CClientSettings::WriteSettingsToXML ( QDomDocument& IniXMLDocument, bool isAboutToQuit )
 {
+    Q_UNUSED ( isAboutToQuit )
     int iIdx;
 
     // IP addresses
@@ -803,12 +742,6 @@ void CClientSettings::WriteSettingsToXML ( QDomDocument& IniXMLDocument )
     // window position of the connect window
     PutIniSetting ( IniXMLDocument, "client", "winposcon_base64", ToBase64 ( vecWindowPosConnect ) );
 
-    // save if in Test mode
-    PutIniSetting ( IniXMLDocument, "client", "test_setting", ToBase64 ( strTestMode ) );
-
-    // window position of the basic connect window
-//    PutIniSetting ( IniXMLDocument, "client", "winposbascon_base64", ToBase64 ( vecWindowPosBasicConnect ) );
-
     // visibility state of the settings window
     SetFlagIniSet ( IniXMLDocument, "client", "winvisset", bWindowWasShownSettings );
 
@@ -817,9 +750,6 @@ void CClientSettings::WriteSettingsToXML ( QDomDocument& IniXMLDocument )
 
     // visibility state of the connect window
     SetFlagIniSet ( IniXMLDocument, "client", "winviscon", bWindowWasShownConnect );
-
-    // visibility state of the basic connect window
-//    SetFlagIniSet ( IniXMLDocument, "client", "winvisbascon", bWindowWasShownBasicConnect );
 
     // Settings Tab
     SetNumericIniSet ( IniXMLDocument, "client", "settingstab", iSettingsTab );
@@ -907,7 +837,9 @@ void CServerSettings::ReadSettingsFromXML ( const QDomDocument& IniXMLDocument, 
     }
 
     // to avoid multiple registrations, must do this after collecting serverinfo
-    if ( !CommandLineOptions.contains ( "--centralserver" ) && !CommandLineOptions.contains ( "--directoryserver" ) )
+    if ( !CommandLineOptions.contains ( "--centralserver" ) &&   // for backwards compatibility
+         !CommandLineOptions.contains ( "--directoryserver" ) && // also for backwards compatibility
+         !CommandLineOptions.contains ( "--directoryaddress" ) )
     {
         // custom directory
         // CServerListManager defaults to command line argument (or "" if not passed)
@@ -929,20 +861,22 @@ void CServerSettings::ReadSettingsFromXML ( const QDomDocument& IniXMLDocument, 
     // Because type could be AT_CUSTOM, it has to be set after the address to avoid multiple registrations
     EDirectoryType directoryType = AT_NONE;
 
-    // if a command line Directory server address is set, set the Directory Type (genre) to AT_CUSTOM so it's used
-    if ( CommandLineOptions.contains ( "--centralserver" ) || CommandLineOptions.contains ( "--directoryserver" ) )
+    // if a command line Directory address is set, set the Directory Type (genre) to AT_CUSTOM so it's used
+    if ( CommandLineOptions.contains ( "--centralserver" ) || CommandLineOptions.contains ( "--directoryserver" ) ||
+         CommandLineOptions.contains ( "--directoryaddress" ) )
     {
         directoryType = AT_CUSTOM;
     }
     else
     {
-        // clang-format off
-        // TODO compatibility to old version < 3.4.7
+        //### TODO: BEGIN ###//
+        // compatibility to old version < 3.4.7
         if ( GetFlagIniSet ( IniXMLDocument, "server", "defcentservaddr", bValue ) )
         {
             directoryType = bValue ? AT_DEFAULT : AT_CUSTOM;
         }
         else
+        {
             //### TODO: END ###//
 
             // if "directorytype" itself is set, use it (note "AT_NONE", "AT_DEFAULT" and "AT_CUSTOM" are min/max directory type here)
@@ -955,19 +889,23 @@ void CServerSettings::ReadSettingsFromXML ( const QDomDocument& IniXMLDocument, 
                                     static_cast<int> ( AT_DEFAULT ),
                                     static_cast<int> ( AT_CUSTOM ),
                                     iValue ) )
-        {
-            directoryType = static_cast<EDirectoryType> ( iValue );
-        }
-        //### TODO: END ###//
+            {
+                directoryType = static_cast<EDirectoryType> ( iValue );
+            }
+            //### TODO: END ###//
 
-        else if ( GetNumericIniSet ( IniXMLDocument,
-                                     "server",
-                                     "directorytype",
-                                     static_cast<int> ( AT_NONE ),
-                                     static_cast<int> ( AT_CUSTOM ),
-                                     iValue ) )
-        {
-            directoryType = static_cast<EDirectoryType> ( iValue );
+            else
+            {
+                if ( GetNumericIniSet ( IniXMLDocument,
+                                        "server",
+                                        "directorytype",
+                                        static_cast<int> ( AT_NONE ),
+                                        static_cast<int> ( AT_CUSTOM ),
+                                        iValue ) )
+                {
+                    directoryType = static_cast<EDirectoryType> ( iValue );
+                }
+            }
         }
 
         //### TODO: BEGIN ###//
@@ -1007,7 +945,7 @@ void CServerSettings::ReadSettingsFromXML ( const QDomDocument& IniXMLDocument, 
     }
 }
 
-void CServerSettings::WriteSettingsToXML ( QDomDocument& IniXMLDocument )
+void CServerSettings::WriteSettingsToXML ( QDomDocument& IniXMLDocument, bool isAboutToQuit )
 {
     // window position of the main window
     PutIniSetting ( IniXMLDocument, "server", "winposmain_base64", ToBase64 ( vecWindowPosMain ) );
@@ -1048,6 +986,9 @@ void CServerSettings::WriteSettingsToXML ( QDomDocument& IniXMLDocument )
     // delay panning
     SetFlagIniSet ( IniXMLDocument, "server", "delaypan", pServer->IsDelayPanningEnabled() );
 
-    // we MUST do this after saving the value and Save() is only called OnAboutToQuit()
-    pServer->SetDirectoryType ( AT_NONE );
+    // we MUST do this after saving the value and Save() is called OnAboutToQuit()
+    if ( isAboutToQuit )
+    {
+        pServer->SetDirectoryType ( AT_NONE );
+    }
 }

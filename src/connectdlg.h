@@ -1,5 +1,5 @@
 /******************************************************************************\
- * Copyright (c) 2004-2022
+ * Copyright (c) 2004-2024
  *
  * Author(s):
  *  Volker Fischer
@@ -36,8 +36,7 @@
 #include "util.h"
 #include "settings.h"
 #include "multicolorled.h"
-#include <QTreeWidget>
-//#include "ui_connectdlgbase.h"
+#include "ui_connectdlgbase.h"
 
 /* Definitions ****************************************************************/
 // defines the time interval at which the request server list message is re-
@@ -45,7 +44,7 @@
 #define SERV_LIST_REQ_UPDATE_TIME_MS 2000 // ms
 
 /* Classes ********************************************************************/
-class CConnectDlg : public QObject
+class CConnectDlg : public CBaseDlg, private Ui_CConnectDlgBase
 {
     Q_OBJECT
 
@@ -76,7 +75,7 @@ protected:
     void             ShowAllMusicians ( const bool bState );
     void             RequestServerList();
     void             EmitCLServerListPingMes ( const CHostAddress& haServerAddress );
-    void             UpdateDirectoryServerComboBox();
+    void             UpdateDirectoryComboBox();
 
     CClientSettings* pSettings;
 
@@ -97,11 +96,12 @@ protected:
 public slots:
     void OnServerListItemDoubleClicked ( QTreeWidgetItem* Item, int );
     void OnServerAddrEditTextChanged ( const QString& );
-    void OnDirectoryServerChanged ( int iTypeIdx );
+    void OnDirectoryChanged ( int iTypeIdx );
     void OnFilterTextEdited ( const QString& ) { UpdateListFilter(); }
     void OnExpandAllStateChanged ( int value ) { ShowAllMusicians ( value == Qt::Checked ); }
     void OnCustomDirectoriesChanged();
     void OnConnectClicked();
+    void OnDeleteServerAddrClicked();
     void OnTimerPing();
     void OnTimerReRequestServList();
 

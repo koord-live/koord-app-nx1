@@ -1,5 +1,5 @@
 /******************************************************************************\
- * Copyright (c) 2004-2022
+ * Copyright (c) 2004-2024
  *
  * Author(s):
  *  Volker Fischer
@@ -91,7 +91,7 @@ public:
               const quint16      iPortNumber,
               const quint16      iQosNumber,
               const QString&     strHTMLStatusFileName,
-              const QString&     strDirectoryServer,
+              const QString&     strDirectoryAddress,
               const QString&     strServerListFileName,
               const QString&     strServerInfo,
               const QString&     strServerListFilter,
@@ -116,10 +116,11 @@ public:
 
     int GetNumberOfConnectedClients();
 
-    void GetConCliParam ( CVector<CHostAddress>& vecHostAddresses,
-                          CVector<QString>&      vecsName,
-                          CVector<int>&          veciJitBufNumFrames,
-                          CVector<int>&          veciNetwFrameSizeFact );
+    void GetConCliParam ( CVector<CHostAddress>&     vecHostAddresses,
+                          CVector<QString>&          vecsName,
+                          CVector<int>&              veciJitBufNumFrames,
+                          CVector<int>&              veciNetwFrameSizeFact,
+                          CVector<CChannelCoreInfo>& vecChanInfo );
 
     void CreateCLServerListReqVerAndOSMes ( const CHostAddress& InetAddr ) { ConnLessProtocol.CreateCLReqVersionAndOSMes ( InetAddr ); }
 
@@ -131,7 +132,7 @@ public:
 
     void           SetDirectoryType ( const EDirectoryType eNCSAT ) { ServerListManager.SetDirectoryType ( eNCSAT ); }
     EDirectoryType GetDirectoryType() { return ServerListManager.GetDirectoryType(); }
-    bool           IsDirectoryServer() { return ServerListManager.IsDirectoryServer(); }
+    bool           IsDirectory() { return ServerListManager.IsDirectory(); }
     ESvrRegStatus  GetSvrRegStatus() { return ServerListManager.GetSvrRegStatus(); }
 
     void             SetServerName ( const QString& strNewName ) { ServerListManager.SetServerName ( strNewName ); }
@@ -348,8 +349,8 @@ public slots:
 
     void OnCLSendEmptyMes ( CHostAddress TargetInetAddr )
     {
-        // only send empty message if not a directory server
-        if ( !ServerListManager.IsDirectoryServer() )
+        // only send empty message if not a directory
+        if ( !ServerListManager.IsDirectory() )
         {
             ConnLessProtocol.CreateCLEmptyMes ( TargetInetAddr );
         }

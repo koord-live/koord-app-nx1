@@ -1,3 +1,28 @@
+##############################################################################
+# Copyright (c) 2022-2023
+#
+# Author(s):
+#  Christian Hoffmann
+#  The Jamulus Development Team
+#
+##############################################################################
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation; either version 2 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+# details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+#
+##############################################################################
+
 # Steps for generating Windows artifacts via Github Actions
 # See README.md in this folder for details.
 # See windows/deploy_windows.ps1 for standalone builds.
@@ -14,20 +39,61 @@ param(
 # Fail early on all errors
 $ErrorActionPreference = "Stop"
 
+# Invoke-WebRequest is really slow by default because it renders a progress bar.
+# Disabling this, improves vastly performance:
+$ProgressPreference = 'SilentlyContinue'
+
 $QtDir = 'C:\Qt'
 $ChocoCacheDir = 'C:\ChocoCache'
-$Qt64Version = "6.4.1"
-$AqtinstallVersion = "3.0.1"
+$DownloadCacheDir = 'C:\AutobuildCache'
+# The following version pinnings are semi-automatically checked for
+# updates. Verify .github/workflows/bump-dependencies.yaml when changing those manually:
+$Qt32Version = "5.15.2"
+$Qt64Version = "6.6.3"
+$AqtinstallVersion = "3.1.16"
+$JackVersion = "1.9.22"
+$Msvc32Version = "win32_msvc2019"
 $Msvc64Version = "win64_msvc2019_64"
 $JomVersion = "1.1.2"
 
-$KoordVersion = $Env:KOORD_BUILD_VERSION
-if ( $KoordVersion -notmatch '^\d+\.\d+\.\d+.*' )
+# Compose JACK download urls
+$JackBaseUrl = "https://github.com/jackaudio/jack2-releases/releases/download/v${JackVersion}/jack2-win"
+$Jack64Url = $JackBaseUrl + "64-v${JackVersion}.exe"
+$Jack32Url = $JackBaseUrl + "32-v${JackVersion}.exe"
+
+$JamulusVersion = $Env:JAMULUS_BUILD_VERSION
+if ( $JamulusVersion -notmatch '^\d+\.\d+\.\d+.*' )
 {
-    throw "Environment variable KOORD_BUILD_VERSION has to be set to a valid version string"
+    throw "Environment variable JAMULUS_BUILD_VERSION has to be set to a valid version string"
 }
 
-Function installQt
+# Download dependency to cache directory
+Function Download-Dependency
+{
+    param(
+        [Parameter(Mandatory=$true)]
+        [string] $Uri,
+        [Parameter(Mandatory=$true)]
+        [string] $Name
+    )
+
+
+    # Restore dependency if cached copy already exists
+    if (Test-Path -Path "$DownloadCacheDir\$Name" -PathType Leaf)
+    {
+        echo "Using ${DownloadCacheDir}\${Name} from previous run (actions/cache)"
+        return
+    }
+
+    Invoke-WebRequest -Uri $Uri -OutFile "${DownloadCacheDir}\${Name}"
+
+    if ( !$? )
+    {
+        throw "Download of $Name ($Uri) failed with exit code $LastExitCode"
+    }
+}
+
+Function Install-Qt
 {
     param(
         [string] $QtVersion,
@@ -39,125 +105,143 @@ Function installQt
         "desktop",
         "$QtVersion",
         "$QtArch",
-        "--modules", "qtwebengine", "qtwebview", "qtmultimedia", "qtwebchannel", "qtpositioning",
-        "--archives", "qtbase", "qtdeclarative", "qtsvg", "qttools"
+        "--archives", "qtbase", "qttools", "qttranslations"
     )
+    if ( $QtVersion -notmatch '5\.[0-9]+\.[0-9]+' )
+    {
+        # From Qt6 onwards, qtmultimedia is a module and cannot be installed
+        # as an archive anymore.
+        $Args += ("--modules")
+    }
+    $Args += ("qtmultimedia")
     aqt install-qt @Args
     if ( !$? )
     {
-        Write-Output "WARNING: Qt installation via first aqt run failed, re-starting with different base URL."
+        echo "WARNING: Qt installation via first aqt run failed, re-starting with different base URL."
         aqt install-qt -b https://mirrors.ocf.berkeley.edu/qt/ @Args
         if ( !$? )
         {
             throw "Qt installation with args @Args failed with exit code $LastExitCode"
         }
     }
-
-    # Above should do:
-    # aqt install --outputdir C:\Qt 5.15.2 windows desktop win64_msvc2019_64
-
-    # add vcredist and cmake - for Koord build
-    aqt install-tool windows desktop --outputdir C:\Qt tools_vcredist qt.tools.vcredist_msvc2019_x64
-    aqt install-tool windows desktop --outputdir C:\Qt tools_cmake qt.tools.cmake
 }
 
-Function ensureQt
+Function Ensure-Qt
 {
     if ( Test-Path -Path $QtDir )
     {
-        Write-Output "Using Qt installation from previous run (actions/cache)"
+        echo "Using Qt installation from previous run (actions/cache)"
         return
     }
 
-    Write-Output "Install Qt..."
+    echo "Install Qt..."
     # Install Qt
-    #   "Preparing metadata (pyproject.toml) did not run successfully."
-    pip install "aqtinstall==$AqtinstallVersion" 
+    pip install "aqtinstall==$AqtinstallVersion"
     if ( !$? )
     {
         throw "pip install aqtinstall failed with exit code $LastExitCode"
     }
 
-    Write-Output "Get Qt 64 bit..."
-    installQt "${Qt64Version}" "${Msvc64Version}"
+    echo "Get Qt 64 bit..."
+    Install-Qt "${Qt64Version}" "${Msvc64Version}"
+
+    echo "Get Qt 32 bit..."
+    Install-Qt "${Qt32Version}" "${Msvc32Version}"
 }
 
-Function ensureJom
+Function Ensure-jom
 {
     choco install --no-progress -y jom --version "${JomVersion}"
 }
 
-Function setupCodeSignCertificate
+Function Ensure-JACK
 {
-    # write Windows OV CodeSign cert to file
-    Write-Output "Writing CodeSign cert output to file C:\KoordOVCert.pfx ..."
-    $B64Cert = $Env:WINDOWS_CODESIGN_CERT
-    $WindowsOVCert = [Convert]::FromBase64String($B64Cert)
-    [IO.File]::WriteAllBytes('C:\KoordOVCert.pfx', $WindowsOVCert)
-    ls 'C:\KoordOVCert.pfx'
-    Write-Output "debug: CodeSign cert :"
-    cat 'C:\KoordOVCert.pfx'
+    if ( $BuildOption -ne "jackonwindows" )
+    {
+        return
+    }
 
-    # write Windows OV CodeSIgn cert password to file
-    Write-Output "Writing CodeSign password to C:\KoordOVCertPwd ..."
-    $Env:WINDOWS_CODESIGN_PWD | Out-File 'C:\KoordOVCertPwd'
-    # New-Item 'C:\KoordOVCertPwd'
-    # Set-Content 'C:\KoordOVCertPwd' $Env:WINDOWS_CODESIGN_PWD
-    ls 'C:\KoordOVCertPwd'
-    Write-Output "debug: CodeSign password :"
-    cat 'C:\KoordOVCertPwd'
+    # Set installer parameters for silent install
+
+    $JACKInstallParms = "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART"
+
+    # Create cache directory if it doesn't exist yet
+
+    if (-not(Test-Path -Path "$DownloadCacheDir"))
+    {
+        New-Item -Path $DownloadCacheDir -ItemType "directory"
+    }
+
+    echo "Downloading 64 Bit and 32 Bit JACK installer (if needed)..."
+
+    Download-Dependency -Uri $Jack64Url -Name "JACK64.exe"
+    Download-Dependency -Uri $Jack32Url -Name "JACK32.exe"
+
+    # Install JACK 64 Bit silently via installer
+
+    echo "Installing JACK2 64-bit..."
+
+    $JACKInstallPath = "${DownloadCacheDir}\JACK64.exe"
+
+    Start-Process -Wait $JACKInstallPath -ArgumentList "$JACKInstallParms"
+
+    if ( !$? )
+    {
+        throw "64bit JACK installer failed with exit code $LastExitCode"
+    }
+
+    echo "64bit JACK installation completed successfully"
+
+    echo "Installing JACK2 32-bit..."
+
+    # Install JACK 32 Bit silently via installer
+
+    $JACKInstallPath = "${DownloadCacheDir}\JACK32.exe"
+
+    Start-Process -Wait $JACKInstallPath -ArgumentList "$JACKInstallParms"
+
+    if ( !$? )
+    {
+        throw "32bit JACK installer failed with exit code $LastExitCode"
+    }
+
+    echo "32bit JACK installation completed successfully"
 }
 
-Function buildAppWithInstaller
+Function Build-App-With-Installer
 {
-    Write-Output "Build app and create installer..."
+    echo "Build app and create installer..."
     $ExtraArgs = @()
     if ( $BuildOption -ne "" )
     {
         $ExtraArgs += ("-BuildOption", $BuildOption)
     }
-    $ExtraArgs += ("-APP_BUILD_VERSION", $KoordVersion)
-    powershell ".\windows\deploy_windows.ps1" @ExtraArgs
+    powershell ".\windows\deploy_windows.ps1" "C:\Qt\${Qt32Version}" "C:\Qt\${Qt64Version}" @ExtraArgs
     if ( !$? )
     {
         throw "deploy_windows.ps1 failed with exit code $LastExitCode"
     }
 }
 
-Function passExeArtifactToJob
+Function Pass-Artifact-to-Job
 {
-    $artifact = "Koord_${KoordVersion}.exe"
+    # Add $BuildOption as artifact file name suffix. Shorten "jackonwindows" to just "jack":
+    $ArtifactSuffix = switch -Regex ( $BuildOption )
+    {
+        "jackonwindows" { "_jack"; break }
+        "^\S+$"         { "_${BuildOption}"; break }
+        default         { "" }
+    }
 
-    Write-Output "Copying artifact to ${artifact}"
-    # "Output" is name of dir for innosetup output
-    Move-Item ".\Output\Koord*.exe" ".\deploy\${artifact}"
+    $artifact = "jamulus_${JamulusVersion}_win${ArtifactSuffix}.exe"
+    echo "Copying artifact to .\deploy\${artifact}"
+    move ".\deploy\Jamulus*installer-win.exe" ".\deploy\${artifact}"
     if ( !$? )
     {
-        throw "Move-Item failed with exit code $LastExitCode"
+        throw "move failed with exit code $LastExitCode"
     }
-    Write-Output "Setting Github step output name=artifact_1::${artifact}"
-    Write-Output "artifact_1=${artifact}" >> "$Env:GITHUB_OUTPUT"
-}
-
-Function passMsixArtifactToJob
-{
-    $artifact = "Koord_${KoordVersion}.msix"
-
-    Write-Output "Copying artifact to ${artifact}"
-    # "deploy" is dir of MakeAppx output
-
-    # make special dir for store upload
-    New-Item -Path  ".\publish" -ItemType Directory
-    # Copy-Item .msix artifact to publish/ dir
-    Copy-Item ".\deploy\Koord.msix" ".\publish\${artifact}"
-
-    Move-Item ".\deploy\Koord.msix" ".\deploy\${artifact}"
-    if ( !$? )
-    {
-        throw "Move-Item failed with exit code $LastExitCode"
-    }
-    Write-Output "Setting Github step output name=artifact_2::${artifact}"
-    Write-Output "artifact_2=${artifact}" >> "$Env:GITHUB_OUTPUT"
+    echo "Setting Github step output name=artifact_1 to ${artifact}"
+    echo "artifact_1=${artifact}" >> "$Env:GITHUB_OUTPUT"
 }
 
 switch ( $Stage )
@@ -165,19 +249,17 @@ switch ( $Stage )
     "setup"
     {
         choco config set cacheLocation $ChocoCacheDir
-        ensureQt
-        ensureJom
-
+        Ensure-Qt
+        Ensure-jom
+        Ensure-JACK
     }
     "build"
     {
-        setupCodeSignCertificate
-        buildAppWithInstaller
+        Build-App-With-Installer
     }
     "get-artifacts"
     {
-        passExeArtifactToJob
-        passMsixArtifactToJob
+        Pass-Artifact-to-Job
     }
     default
     {
