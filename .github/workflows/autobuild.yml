@@ -414,7 +414,7 @@ jobs:
           primary-bundle-id:        io.jamulus.Jamulus
           appstore-connect-username: ${{ secrets.NOTARIZATION_USERNAME }}
           appstore-connect-password: ${{ secrets.NOTARIZATION_PASSWORD }}
-          appstore-connect-team-id:  ${{ secrets.NOTARIZATION_TEAM_ID }}
+          appstore-connect-team-id:  ${{ secrets.APPLE_APPSTORE_TEAMID }}
           verbose:                  true
 
       - name:                       Staple macOS Release Build
@@ -449,7 +449,7 @@ jobs:
           NOTARIZATION_USERNAME:    ${{ secrets.NOTARIZATION_USERNAME }}
           NOTARIZATION_PASSWORD:    ${{ secrets.NOTARIZATION_PASSWORD }}
           JAMULUS_BUILD_VERSION:    ${{ needs.create_release.outputs.build_version }}
-          APPLE_TEAM_ID:            XXXXXXXXXXX
+          APPLE_TEAM_ID:            ${{ secrets.APPLE_APPSTORE_TEAMID }}
 
       - name:                       Perform CodeQL Analysis
         if:                         matrix.config.run_codeql
