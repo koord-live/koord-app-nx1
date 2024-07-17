@@ -1,4 +1,4 @@
-VERSION = 3.10.22
+VERSION = 3.10.23
 
 # Using lrelease and embed_translations only works for Qt 5.12 or later.
 # See https://github.com/jamulussoftware/jamulus/pull/3288 for these changes.
